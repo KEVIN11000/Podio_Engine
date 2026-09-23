@@ -1,4 +1,4 @@
-﻿$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Stop'
 $installPath = "$env:LOCALAPPDATA\RawDrive"
 $exePath = "$installPath\RawDrive.exe"
 
@@ -21,7 +21,7 @@ Copy-Item ".\videos\*" -Destination "$installPath\videos" -Force -Recurse
 # Registro de inicio automatico
 $registryPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"
 $name = "RawDriveEngine"
-$value = ""$exePath""
+$value = "`"$exePath`""
 Set-ItemProperty -Path $registryPath -Name $name -Value $value
 
 # Crear acceso directo en el escritorio
