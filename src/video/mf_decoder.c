@@ -60,17 +60,22 @@ int Decoder_Init(Decoder* d, const wchar_t* videoPath) {
                          &d->videoWidth, &d->videoHeight);
         IMFMediaType_Release(nativeType);
     }
-    if (d->videoWidth == 0 || d->videoHeight == 0) {
-        Logger_Log(LOG_ERROR, "Could not determine video dimensions.");
-        Decoder_Shutdown(d);
-        return -1;
-    }
+    int scrW = GetSystemMetrics(SM_CXSCREEN);
+    int scrH = GetSystemMetrics(SM_CYSCREEN);
 
-    /* Request RGB32 (BGRA) output so we can upload straight to D3D11. */
+    /* We no longer rely on native dimensions because we will force resize. */
+    d->videoWidth  = (UINT32)scrW;
+    d->videoHeight = (UINT32)scrH;
+
+    /* Request RGB32 (BGRA) output at SCREEN dimensions to match the D3D11 backbuffer. */
+
     IMFMediaType* outType = NULL;
     MFCreateMediaType(&outType);
     IMFMediaType_SetGUID(outType, &MF_MT_MAJOR_TYPE, &MFMediaType_Video);
     IMFMediaType_SetGUID(outType, &MF_MT_SUBTYPE,    &MFVideoFormat_RGB32);
+
+    UINT64 packedSize = ((UINT64)scrW << 32) | (UINT64)scrH;
+    IMFMediaType_SetUINT64(outType, &MF_MT_FRAME_SIZE, packedSize);
 
     hr = IMFSourceReader_SetCurrentMediaType(
             d->reader,
