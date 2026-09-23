@@ -5,12 +5,6 @@
 // Window procedure for our injected background window
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     switch (uMsg) {
-        case WM_CREATE:
-            Tray_Init(hwnd);
-            return 0;
-        case WM_TRAYICON:
-            Tray_HandleMessage(hwnd, wParam, lParam);
-            return 0;
         case WM_PAINT: {
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hwnd, &ps);
@@ -74,7 +68,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     // Set the parent explicitly to inject it behind icons
     SetParent(hwnd, workerw);
 
-    // 4. Message loop
+    // 4. Init the system tray icon on a separate hidden window
+    Tray_Init(hInstance, hwnd);
     MSG msg = {0};
     while (GetMessage(&msg, NULL, 0, 0)) {
         TranslateMessage(&msg);
