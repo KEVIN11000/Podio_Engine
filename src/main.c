@@ -1,6 +1,11 @@
 #include <windows.h>
 #include "core/hook_workerw.h"
 #include "ui/tray.h"
+#include "utils/config.h"
+#include "utils/logger.h"
+
+// Global application config
+static AppConfig g_config;
 
 // Window procedure for our injected background window
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
@@ -18,6 +23,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         }
         case WM_DESTROY:
             Tray_Cleanup();
+            Logger_Log(LOG_INFO, "RawDrive Engine shutting down.");
+            Logger_Shutdown();
             PostQuitMessage(0);
             return 0;
         default:
@@ -30,12 +37,20 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR pCmdLine
     (void)pCmdLine;
     (void)nCmdShow;
 
+    // 0. Load configuration and start logger
+    Config_Load(&g_config, "config.ini");
+    Logger_Init("rawdrive.log");
+    Logger_Log(LOG_INFO, "RawDrive Engine starting...");
+
     // 1. Get the background WorkerW
     HWND workerw = GetWorkerW();
     if (!workerw) {
+        Logger_Log(LOG_ERROR, "Failed to locate WorkerW.");
         MessageBoxW(NULL, L"Failed to locate WorkerW.", L"Error", MB_OK | MB_ICONERROR);
+        Logger_Shutdown();
         return 1;
     }
+    Logger_Log(LOG_INFO, "WorkerW found: %p", (void*)workerw);
 
     // 2. Register the window class
     const wchar_t CLASS_NAME[] = L"RawDriveWindow";

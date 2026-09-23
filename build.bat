@@ -11,6 +11,8 @@ gcc %CFLAGS% ^
     src\main.c ^
     src\core\hook_workerw.c ^
     src\ui\tray.c ^
+    src\utils\config.c ^
+    src\utils\logger.c ^
     -o bin\RawDrive.exe %LIBS% -mwindows
 
 if %ERRORLEVEL% equ 0 (
