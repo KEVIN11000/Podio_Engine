@@ -10,6 +10,7 @@ echo Compiling RawDrive Engine...
 gcc %CFLAGS% ^
     src\main.c ^
     src\core\hook_workerw.c ^
+    src\ui\tray.c ^
     -o bin\RawDrive.exe %LIBS% -mwindows
 
 if %ERRORLEVEL% equ 0 (

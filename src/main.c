@@ -1,22 +1,29 @@
 #include <windows.h>
 #include "core/hook_workerw.h"
+#include "ui/tray.h"
 
 // Window procedure for our injected background window
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     switch (uMsg) {
+        case WM_CREATE:
+            Tray_Init(hwnd);
+            return 0;
+        case WM_TRAYICON:
+            Tray_HandleMessage(hwnd, wParam, lParam);
+            return 0;
         case WM_PAINT: {
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hwnd, &ps);
             
-            // Fill the screen with a solid color to verify injection (e.g., solid red)
-            HBRUSH brush = CreateSolidBrush(RGB(200, 50, 50));
+            // Render a black background until D3D11 is ready
+            HBRUSH brush = (HBRUSH)GetStockObject(BLACK_BRUSH);
             FillRect(hdc, &ps.rcPaint, brush);
-            DeleteObject(brush);
             
             EndPaint(hwnd, &ps);
             return 0;
         }
         case WM_DESTROY:
+            Tray_Cleanup();
             PostQuitMessage(0);
             return 0;
         default:
