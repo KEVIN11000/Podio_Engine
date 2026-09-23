@@ -208,7 +208,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
         /* Check for focus occlusion or session/power pause */
         BOOL occluded = FocusGuard_IsOccluded();
         if (g_paused || occluded || !decoderReady) {
-            Sleep(100);
+            MsgWaitForMultipleObjects(0, NULL, FALSE, 100, QS_ALLINPUT);
             QueryPerformanceCounter(&lastFrameTime); // Reset timer when waking up
             continue;
         }
@@ -227,8 +227,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
                 Renderer_UploadAndPresent(&g_renderer, pixels, (UINT)pitch);
             }
         } else {
-            /* Sleep for 1ms to yield CPU while waiting for the next frame */
-            Sleep(1);
+            /* Yield CPU but wake immediately if a message arrives */
+            MsgWaitForMultipleObjects(0, NULL, FALSE, 1, QS_ALLINPUT);
         }
     }
 
