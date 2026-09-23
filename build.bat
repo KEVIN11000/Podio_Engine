@@ -10,6 +10,9 @@ echo Compiling RawDrive Engine...
 gcc %CFLAGS% ^
     src\main.c ^
     src\core\hook_workerw.c ^
+    src\core\idle_engine.c ^
+    src\monitor\focus_guard.c ^
+    src\monitor\session_guard.c ^
     src\ui\tray.c ^
     src\utils\config.c ^
     src\utils\logger.c ^

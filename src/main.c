@@ -1,6 +1,9 @@
 #include <windows.h>
 #include <objbase.h>
 #include "core/hook_workerw.h"
+#include "core/idle_engine.h"
+#include "monitor/focus_guard.h"
+#include "monitor/session_guard.h"
 #include "ui/tray.h"
 #include "utils/config.h"
 #include "utils/logger.h"
@@ -11,7 +14,9 @@
 static AppConfig g_config;
 static Renderer  g_renderer;
 static Decoder   g_decoder;
-static BOOL      g_running = TRUE;
+static BOOL      g_running   = TRUE;
+static BOOL      g_paused    = FALSE;   /* session lock / power suspend */
+static HINSTANCE g_hInstance  = NULL;
 
 /* ── Window procedure for the injected background window ──────────  */
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg,
@@ -28,13 +33,25 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg,
             DestroyWindow(hwnd);
             return 0;
         case WM_DESTROY:
+            SessionGuard_Unregister(hwnd);
             Tray_Cleanup();
             Logger_Log(LOG_INFO, "RawDrive Engine shutting down.");
             Logger_Shutdown();
             PostQuitMessage(0);
             return 0;
-        default:
+        default: {
+            /* Let the session guard inspect WTS / power messages */
+            BOOL shouldPause = g_paused;
+            if (SessionGuard_HandleMessage(uMsg, wParam, lParam, &shouldPause)) {
+                if (shouldPause != g_paused) {
+                    g_paused = shouldPause;
+                    Logger_Log(LOG_INFO, "Session guard → %s",
+                               g_paused ? "PAUSED" : "RESUMED");
+                }
+                return 0;
+            }
             return DefWindowProcW(hwnd, uMsg, wParam, lParam);
+        }
     }
 }
 
@@ -86,9 +103,11 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
         return 1;
     }
     SetParent(hwnd, workerw);
+    g_hInstance = hInstance;
 
-    /* 3. System tray (independent hidden window) */
+    /* 3. System tray + session guard */
     Tray_Init(hInstance, hwnd);
+    SessionGuard_Register(hwnd);
 
     /* 4. Initialise D3D11 renderer */
     if (Renderer_Init(&g_renderer, hwnd) != 0) {
@@ -124,15 +143,26 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
         }
         if (!g_running) break;
 
-        if (decoderReady) {
-            const BYTE* pixels = NULL;
-            LONG pitch = 0;
-            if (Decoder_ReadFrame(&g_decoder, &pixels, &pitch) == 0) {
-                Renderer_UploadAndPresent(&g_renderer, pixels, (UINT)pitch);
-            }
-        } else {
-            /* Nothing to render — sleep to avoid burning CPU */
+        /* Check for Idle Engine trigger */
+        if (g_config.idle_timeout_sec > 0 && IdleEngine_IsIdle(g_config.idle_timeout_sec)) {
+            Logger_Log(LOG_INFO, "Idle timeout reached. Triggering cinematic overlay.");
+            IdleEngine_ShowAndLock(g_hInstance);
+            /* Return to normal state after lock */
+            continue;
+        }
+
+        /* Check for focus occlusion or session/power pause */
+        BOOL occluded = FocusGuard_IsOccluded();
+        if (g_paused || occluded || !decoderReady) {
             Sleep(100);
+            continue;
+        }
+
+        /* Decode and present frame */
+        const BYTE* pixels = NULL;
+        LONG pitch = 0;
+        if (Decoder_ReadFrame(&g_decoder, &pixels, &pitch) == 0) {
+            Renderer_UploadAndPresent(&g_renderer, pixels, (UINT)pitch);
         }
     }
 
