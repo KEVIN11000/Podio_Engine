@@ -4,6 +4,7 @@
 #include <windows.h>
 
 #define WM_TRAYICON (WM_USER + 1)
+#define WM_CHANGE_VIDEO (WM_APP + 1)
 
 // Menu command IDs
 #define TRAY_CMD_QUIT 1001

@@ -14,18 +14,48 @@ static LRESULT CALLBACK TrayWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM 
                 GetCursorPos(&pt);
 
                 HMENU hMenu = CreatePopupMenu();
+                HMENU hVideoMenu = CreatePopupMenu();
+
+                // Scan videos directory
+                static wchar_t videoFiles[50][MAX_PATH];
+                int videoCount = 0;
+                WIN32_FIND_DATAW ffd;
+                HANDLE hFind = FindFirstFileW(L"videos\\*.mp4", &ffd);
+                if (hFind != INVALID_HANDLE_VALUE) {
+                    do {
+                        if (!(ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && videoCount < 50) {
+                            lstrcpyW(videoFiles[videoCount], ffd.cFileName);
+                            AppendMenuW(hVideoMenu, MF_STRING, 2000 + videoCount, ffd.cFileName);
+                            videoCount++;
+                        }
+                    } while (FindNextFileW(hFind, &ffd) != 0);
+                    FindClose(hFind);
+                }
+
+                if (videoCount == 0) {
+                    AppendMenuW(hVideoMenu, MF_STRING | MF_GRAYED, 0, L"No videos found");
+                }
+
+                AppendMenuW(hMenu, MF_POPUP, (UINT_PTR)hVideoMenu, L"Select Video");
+                AppendMenuW(hMenu, MF_SEPARATOR, 0, NULL);
                 AppendMenuW(hMenu, MF_STRING, TRAY_CMD_QUIT, L"Quit RawDrive");
 
-                // Required for the menu to disappear if the user clicks outside
                 SetForegroundWindow(hwnd);
 
                 int cmd = TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_NONOTIFY,
                                          pt.x, pt.y, 0, hwnd, NULL);
                 if (cmd == TRAY_CMD_QUIT) {
-                    // Signal the renderer window to close
                     PostMessage(g_hRendererWnd, WM_CLOSE, 0, 0);
+                } else if (cmd >= 2000 && cmd < 2000 + videoCount) {
+                    int idx = cmd - 2000;
+                    static wchar_t selectedPath[MAX_PATH];
+                    lstrcpyW(selectedPath, L"videos\\");
+                    lstrcatW(selectedPath, videoFiles[idx]);
+                    // Send message to main window to change video
+                    SendMessageW(g_hRendererWnd, WM_CHANGE_VIDEO, 0, (LPARAM)selectedPath);
                 }
 
+                DestroyMenu(hVideoMenu);
                 DestroyMenu(hMenu);
             }
             return 0;

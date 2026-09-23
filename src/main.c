@@ -16,6 +16,7 @@ static Renderer  g_renderer;
 static Decoder   g_decoder;
 static BOOL      g_running   = TRUE;
 static BOOL      g_paused    = FALSE;   /* session lock / power suspend */
+static BOOL      decoderReady = FALSE;
 static HINSTANCE g_hInstance  = NULL;
 
 /* ── Window procedure for the injected background window ──────────  */
@@ -26,6 +27,30 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg,
             PAINTSTRUCT ps;
             BeginPaint(hwnd, &ps);
             EndPaint(hwnd, &ps);   /* D3D11 owns the surface now */
+            return 0;
+        }
+        case WM_CHANGE_VIDEO: {
+            const wchar_t* newPath = (const wchar_t*)lParam;
+            Logger_Log(LOG_INFO, "Switching video to: %ls", newPath);
+
+            /* Convert back to UTF-8 for config */
+            char utf8Path[MAX_PATH_LEN];
+            WideCharToMultiByte(CP_UTF8, 0, newPath, -1, utf8Path, MAX_PATH_LEN, NULL, NULL);
+            lstrcpyA(g_config.video_path, utf8Path);
+
+            /* Persist to config.ini */
+            WritePrivateProfileStringA("Engine", "VideoPath", utf8Path, ".\\config.ini");
+
+            /* Reboot the decoder */
+            decoderReady = FALSE;
+            Decoder_Shutdown(&g_decoder);
+
+            if (g_renderer.device && Decoder_Init(&g_decoder, newPath) == 0) {
+                decoderReady = TRUE;
+                Logger_Log(LOG_INFO, "Video decoder successfully restarted.");
+            } else {
+                Logger_Log(LOG_ERROR, "Failed to load new video.");
+            }
             return 0;
         }
         case WM_CLOSE:
@@ -121,7 +146,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
                         g_config.video_path, -1,
                         wVideoPath, MAX_PATH_LEN);
 
-    BOOL decoderReady = FALSE;
     if (g_renderer.device && Decoder_Init(&g_decoder, wVideoPath) == 0) {
         decoderReady = TRUE;
         Logger_Log(LOG_INFO, "Video pipeline ready — entering render loop.");
