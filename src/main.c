@@ -87,7 +87,20 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     (void)pCmdLine;
     (void)nCmdShow;
 
-    /* 0. COM + Config + Logger */
+    /* 0. Set Working Directory */
+    wchar_t exePath[MAX_PATH];
+    GetModuleFileNameW(NULL, exePath, MAX_PATH);
+    wchar_t* lastSlash = wcsrchr(exePath, L'\\');
+    if (lastSlash) *lastSlash = L'\0'; // exe directory
+
+    /* If inside "bin", step up to project root */
+    wchar_t* dirName = wcsrchr(exePath, L'\\');
+    if (dirName && lstrcmpiW(dirName + 1, L"bin") == 0) {
+        *dirName = L'\0';
+    }
+    SetCurrentDirectoryW(exePath);
+
+    /* 1. COM + Config + Logger */
     CoInitializeEx(NULL, COINIT_MULTITHREADED);
     Config_Load(&g_config, "config.ini");
     Logger_Init("rawdrive.log");
