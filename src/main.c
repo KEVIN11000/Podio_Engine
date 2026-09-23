@@ -92,7 +92,11 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     (void)pCmdLine;
     (void)nCmdShow;
 
-    /* 0. Set Working Directory */
+    /* 0. Set DPI Awareness to prevent Windows from scaling the window, 
+          which causes it to not fill the screen on scaled displays. */
+    SetProcessDPIAware();
+
+    /* 1. Set Working Directory */
     wchar_t exePath[MAX_PATH];
     GetModuleFileNameW(NULL, exePath, MAX_PATH);
     wchar_t* lastSlash = wcsrchr(exePath, L'\\');
@@ -174,6 +178,10 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
         Logger_Log(LOG_INFO, "Video pipeline ready — entering render loop.");
     }
 
+    LARGE_INTEGER perfFreq, lastFrameTime, currentTime;
+    QueryPerformanceFrequency(&perfFreq);
+    QueryPerformanceCounter(&lastFrameTime);
+
     /* 6. Main loop (PeekMessage + frame decode/present) */
     MSG msg = {0};
     while (g_running) {
@@ -193,6 +201,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
             Logger_Log(LOG_INFO, "Idle timeout reached. Triggering cinematic overlay.");
             IdleEngine_ShowAndLock(g_hInstance);
             /* Return to normal state after lock */
+            QueryPerformanceCounter(&lastFrameTime); // Reset timer after locking
             continue;
         }
 
@@ -200,14 +209,26 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
         BOOL occluded = FocusGuard_IsOccluded();
         if (g_paused || occluded || !decoderReady) {
             Sleep(100);
+            QueryPerformanceCounter(&lastFrameTime); // Reset timer when waking up
             continue;
         }
 
-        /* Decode and present frame */
-        const BYTE* pixels = NULL;
-        LONG pitch = 0;
-        if (Decoder_ReadFrame(&g_decoder, &pixels, &pitch) == 0) {
-            Renderer_UploadAndPresent(&g_renderer, pixels, (UINT)pitch);
+        /* Frame pacing (A/V Sync) */
+        QueryPerformanceCounter(&currentTime);
+        LONGLONG elapsed100ns = ((currentTime.QuadPart - lastFrameTime.QuadPart) * 10000000LL) / perfFreq.QuadPart;
+        
+        if (elapsed100ns >= g_decoder.frameDuration100ns) {
+            lastFrameTime = currentTime;
+
+            /* Decode and present frame */
+            const BYTE* pixels = NULL;
+            LONG pitch = 0;
+            if (Decoder_ReadFrame(&g_decoder, &pixels, &pitch) == 0) {
+                Renderer_UploadAndPresent(&g_renderer, pixels, (UINT)pitch);
+            }
+        } else {
+            /* Sleep for 1ms to yield CPU while waiting for the next frame */
+            Sleep(1);
         }
     }
 

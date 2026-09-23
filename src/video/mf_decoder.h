@@ -13,6 +13,7 @@ typedef struct {
     IMFSourceReader* reader;
     UINT32           videoWidth;
     UINT32           videoHeight;
+    LONGLONG         frameDuration100ns; // Duration of one frame in 100-nanosecond units
     BYTE*            frameBuffer;   // Internal BGRA pixel buffer
     LONG             framePitch;    // Row stride in bytes
 } Decoder;

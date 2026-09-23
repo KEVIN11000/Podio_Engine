@@ -49,7 +49,7 @@ int Decoder_Init(Decoder* d, const wchar_t* videoPath) {
         return -1;
     }
 
-    /* Query native video dimensions. */
+    /* Query native video dimensions and framerate. */
     IMFMediaType* nativeType = NULL;
     hr = IMFSourceReader_GetNativeMediaType(
             d->reader,
@@ -58,6 +58,14 @@ int Decoder_Init(Decoder* d, const wchar_t* videoPath) {
     if (SUCCEEDED(hr)) {
         GetAttributeSize(nativeType, &MF_MT_FRAME_SIZE,
                          &d->videoWidth, &d->videoHeight);
+        
+        UINT32 fpsNum = 0, fpsDen = 1;
+        if (SUCCEEDED(GetAttributeSize(nativeType, &MF_MT_FRAME_RATE, &fpsNum, &fpsDen)) && fpsNum > 0) {
+            d->frameDuration100ns = (10000000LL * fpsDen) / fpsNum;
+        } else {
+            d->frameDuration100ns = 333333; // Fallback to ~30 FPS
+        }
+
         IMFMediaType_Release(nativeType);
     }
 
