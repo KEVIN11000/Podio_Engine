@@ -1,8 +1,8 @@
 @echo off
 setlocal
 
-set CFLAGS=-O2 -Wall -Wextra -std=c11 -DUNICODE -D_UNICODE -municode -Isrc
-set LIBS=-luser32 -lgdi32 -lshell32 -ld3d11 -ldxgi -lmf -lmfplat -lmfuuid -lmfreadwrite -lwtsapi32
+set CFLAGS=-O2 -Wall -Wextra -std=c11 -DUNICODE -D_UNICODE -DCOBJMACROS -municode -Isrc
+set LIBS=-ld3d11 -ldxgi -lmf -lmfplat -lmfuuid -lmfreadwrite -luser32 -lgdi32 -lshell32 -lwtsapi32 -lole32 -luuid -lpropsys
 
 if not exist bin mkdir bin
 
@@ -13,6 +13,8 @@ gcc %CFLAGS% ^
     src\ui\tray.c ^
     src\utils\config.c ^
     src\utils\logger.c ^
+    src\video\d3d11_renderer.c ^
+    src\video\mf_decoder.c ^
     -o bin\RawDrive.exe %LIBS% -mwindows
 
 if %ERRORLEVEL% equ 0 (
