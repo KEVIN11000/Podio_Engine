@@ -58,43 +58,24 @@ int Decoder_Init(Decoder* d, const wchar_t* videoPath) {
     if (SUCCEEDED(hr)) {
         GetAttributeSize(nativeType, &MF_MT_FRAME_SIZE,
                          &d->videoWidth, &d->videoHeight);
+        IMFMediaType_Release(nativeType);
     }
-    int scrW = GetSystemMetrics(SM_CXSCREEN);
-    int scrH = GetSystemMetrics(SM_CYSCREEN);
 
-    /* We no longer rely on native dimensions because we will force resize. */
-    d->videoWidth  = (UINT32)scrW;
-    d->videoHeight = (UINT32)scrH;
 
-    /* Request RGB32 (BGRA) output at SCREEN dimensions to match the D3D11 backbuffer. */
-
-    /* We must use the native type as a base so we don't miss required attributes 
-       like interlace mode or aspect ratio, which causes MF_E_INVALIDMEDIATYPE. */
     IMFMediaType* outType = NULL;
     hr = MFCreateMediaType(&outType);
     if (SUCCEEDED(hr)) {
-        if (nativeType) {
-            IMFMediaType_CopyAllItems(nativeType, (IMFAttributes*)outType);
-        }
         IMFMediaType_SetGUID(outType, &MF_MT_MAJOR_TYPE, &MFMediaType_Video);
         IMFMediaType_SetGUID(outType, &MF_MT_SUBTYPE, &MFVideoFormat_RGB32);
-
-        UINT64 packedSize = ((UINT64)scrW << 32) | (UINT32)scrH;
-        IMFMediaType_SetUINT64(outType, &MF_MT_FRAME_SIZE, packedSize);
-
-        /* Reset the stride if copied, so MF calculates the correct new stride for RGB32 */
-        IMFMediaType_DeleteItem(outType, &MF_MT_DEFAULT_STRIDE);
-        IMFMediaType_DeleteItem(outType, &MF_MT_SAMPLE_SIZE);
-    }
-    if (nativeType) {
-        IMFMediaType_Release(nativeType);
     }
 
     hr = IMFSourceReader_SetCurrentMediaType(
             d->reader,
             (DWORD)MF_SOURCE_READER_FIRST_VIDEO_STREAM,
             NULL, outType);
-    if (outType) IMFMediaType_Release(outType);
+    if (outType) {
+        IMFMediaType_Release(outType);
+    }
 
     if (FAILED(hr)) {
         Logger_Log(LOG_ERROR, "SetCurrentMediaType(RGB32) failed: 0x%08lX",

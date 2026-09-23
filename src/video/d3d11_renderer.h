@@ -17,8 +17,8 @@ typedef struct {
     UINT                 height;
 } Renderer;
 
-// Creates D3D11 device + swap chain bound to the given HWND.
-int  Renderer_Init(Renderer* r, HWND hwnd);
+// Creates D3D11 device + swap chain bound to the given HWND, using the specified backbuffer size.
+int  Renderer_Init(Renderer* r, HWND hwnd, UINT videoWidth, UINT videoHeight);
 
 // Copies BGRA pixel data into the back buffer and presents with VSync.
 void Renderer_UploadAndPresent(Renderer* r, const void* bgraData, UINT rowPitch);

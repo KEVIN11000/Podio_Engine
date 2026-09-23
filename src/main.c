@@ -41,13 +41,18 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg,
             /* Persist to config.ini */
             WritePrivateProfileStringA("Engine", "VideoPath", utf8Path, ".\\config.ini");
 
-            /* Reboot the decoder */
+            /* Reboot the decoder and renderer */
             decoderReady = FALSE;
             Decoder_Shutdown(&g_decoder);
+            Renderer_Shutdown(&g_renderer);
 
-            if (g_renderer.device && Decoder_Init(&g_decoder, newPath) == 0) {
-                decoderReady = TRUE;
-                Logger_Log(LOG_INFO, "Video decoder successfully restarted.");
+            if (Decoder_Init(&g_decoder, newPath) == 0) {
+                if (Renderer_Init(&g_renderer, hwnd, g_decoder.videoWidth, g_decoder.videoHeight) == 0) {
+                    decoderReady = TRUE;
+                    Logger_Log(LOG_INFO, "Video decoder successfully restarted.");
+                } else {
+                    Logger_Log(LOG_ERROR, "Renderer failed to restart with new dimensions.");
+                }
             } else {
                 Logger_Log(LOG_ERROR, "Failed to load new video.");
             }
@@ -147,23 +152,26 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     Tray_Init(hInstance, hwnd);
     SessionGuard_Register(hwnd);
 
-    /* 4. Initialise D3D11 renderer */
-    if (Renderer_Init(&g_renderer, hwnd) != 0) {
-        Logger_Log(LOG_ERROR, "Renderer init failed — falling back to GDI.");
-        /* Keep running with the black GDI background */
-    }
-
-    /* 5. Initialise Media Foundation decoder */
+    /* 4. Initialise Media Foundation decoder */
     wchar_t wVideoPath[MAX_PATH_LEN];
     MultiByteToWideChar(CP_UTF8, 0,
                         g_config.video_path, -1,
                         wVideoPath, MAX_PATH_LEN);
 
-    if (g_renderer.device && Decoder_Init(&g_decoder, wVideoPath) == 0) {
+    if (Decoder_Init(&g_decoder, wVideoPath) == 0) {
         decoderReady = TRUE;
-        Logger_Log(LOG_INFO, "Video pipeline ready — entering render loop.");
     } else {
         Logger_Log(LOG_WARN, "Decoder init failed — desktop will stay black.");
+    }
+
+    /* 5. Initialise D3D11 renderer */
+    UINT vw = decoderReady ? g_decoder.videoWidth : (UINT)GetSystemMetrics(SM_CXSCREEN);
+    UINT vh = decoderReady ? g_decoder.videoHeight : (UINT)GetSystemMetrics(SM_CYSCREEN);
+    if (Renderer_Init(&g_renderer, hwnd, vw, vh) != 0) {
+        Logger_Log(LOG_ERROR, "Renderer init failed — falling back to GDI.");
+        decoderReady = FALSE;
+    } else if (decoderReady) {
+        Logger_Log(LOG_INFO, "Video pipeline ready — entering render loop.");
     }
 
     /* 6. Main loop (PeekMessage + frame decode/present) */

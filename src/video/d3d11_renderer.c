@@ -2,11 +2,11 @@
 #include "../utils/logger.h"
 #include <string.h>
 
-int Renderer_Init(Renderer* r, HWND hwnd) {
+int Renderer_Init(Renderer* r, HWND hwnd, UINT videoWidth, UINT videoHeight) {
     memset(r, 0, sizeof(*r));
 
-    r->width  = (UINT)GetSystemMetrics(SM_CXSCREEN);
-    r->height = (UINT)GetSystemMetrics(SM_CYSCREEN);
+    r->width  = videoWidth;
+    r->height = videoHeight;
 
     // Swap chain descriptor — DXGI 1.0 compatible
     DXGI_SWAP_CHAIN_DESC scd;
