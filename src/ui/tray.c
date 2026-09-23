@@ -94,7 +94,10 @@ void Tray_Init(HINSTANCE hInstance, HWND hRendererWnd) {
     nid.uID = 1;
     nid.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
     nid.uCallbackMessage = WM_TRAYICON;
-    nid.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+    nid.hIcon = LoadIconA(hInstance, "IDI_ICON1");
+    if (!nid.hIcon) {
+        nid.hIcon = LoadIcon(NULL, IDI_APPLICATION); // Fallback
+    }
     lstrcpyW(nid.szTip, L"RawDrive Engine");
 
     Shell_NotifyIconW(NIM_ADD, &nid);

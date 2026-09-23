@@ -7,6 +7,8 @@ set LIBS=-ld3d11 -ldxgi -lmf -lmfplat -lmfuuid -lmfreadwrite -luser32 -lgdi32 -l
 if not exist bin mkdir bin
 
 echo Compiling RawDrive Engine...
+windres app.rc -O coff -o bin\app.res
+
 gcc %CFLAGS% ^
     src\main.c ^
     src\core\hook_workerw.c ^
@@ -18,6 +20,7 @@ gcc %CFLAGS% ^
     src\utils\logger.c ^
     src\video\d3d11_renderer.c ^
     src\video\mf_decoder.c ^
+    bin\app.res ^
     -o bin\RawDrive.exe %LIBS% -mwindows
 
 if %ERRORLEVEL% equ 0 (
