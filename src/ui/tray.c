@@ -49,7 +49,7 @@ static LRESULT CALLBACK TrayWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM 
                 if (cmd == TRAY_CMD_QUIT) {
                     PostMessage(g_hRendererWnd, WM_CLOSE, 0, 0);
                 } else if (cmd == TRAY_CMD_AI_GENERATE) {
-                    ShellExecuteW(NULL, L"open", L"python", L"tools\\ai_gui.py", NULL, SW_SHOWNORMAL);
+                    ShellExecuteW(NULL, L"open", L"pythonw", L"tools\\ai_gui.py", NULL, SW_SHOWNORMAL);
                 } else if (cmd >= 2000 && cmd < 2000 + videoCount) {
                     int idx = cmd - 2000;
                     static wchar_t selectedPath[MAX_PATH];
