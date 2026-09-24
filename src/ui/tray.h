@@ -8,6 +8,7 @@
 
 // Menu command IDs
 #define TRAY_CMD_QUIT 1001
+#define TRAY_CMD_AI_GENERATE 1002
 
 // Creates a hidden message-only window and registers the tray icon.
 // hInstance: the application instance.

@@ -38,6 +38,8 @@ static LRESULT CALLBACK TrayWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM 
 
                 AppendMenuW(hMenu, MF_POPUP, (UINT_PTR)hVideoMenu, L"Select Video");
                 AppendMenuW(hMenu, MF_SEPARATOR, 0, NULL);
+                AppendMenuW(hMenu, MF_STRING, TRAY_CMD_AI_GENERATE, L"Generar fondo con IA...");
+                AppendMenuW(hMenu, MF_SEPARATOR, 0, NULL);
                 AppendMenuW(hMenu, MF_STRING, TRAY_CMD_QUIT, L"Quit RawDrive");
 
                 SetForegroundWindow(hwnd);
@@ -46,6 +48,8 @@ static LRESULT CALLBACK TrayWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM 
                                          pt.x, pt.y, 0, hwnd, NULL);
                 if (cmd == TRAY_CMD_QUIT) {
                     PostMessage(g_hRendererWnd, WM_CLOSE, 0, 0);
+                } else if (cmd == TRAY_CMD_AI_GENERATE) {
+                    ShellExecuteW(NULL, L"open", L"python", L"tools\\ai_gui.py", NULL, SW_SHOWNORMAL);
                 } else if (cmd >= 2000 && cmd < 2000 + videoCount) {
                     int idx = cmd - 2000;
                     static wchar_t selectedPath[MAX_PATH];
